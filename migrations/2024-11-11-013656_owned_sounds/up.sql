@@ -1,0 +1,1 @@
+ALTER TABLE audio_ledger ADD COLUMN uploader NUMERIC(20) NOT NULL;

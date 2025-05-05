@@ -1,0 +1,6 @@
+CREATE TABLE audio_ledger (
+    id BIGSERIAL PRIMARY KEY,
+    link_or_name VARCHAR(1024) NOT NULL UNIQUE,
+    downloaded BOOLEAN NOT NULL DEFAULT FALSE,
+    file_path VARCHAR(1024) NOT NULL UNIQUE
+);
