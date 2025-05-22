@@ -142,7 +142,9 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
         // Best audio format, only
         if !std::fs::exists(video_download_dir.as_path()).map_err(|_e| RequestError::Internal("vid dl check failure".into()))? {
             trc::info!("VIDEO-DOWNLOAD-START");
-            yt_client.format("ba");
+            yt_client.format("a[acodec^=mp3]/ba/b");
+            yt_client.extract_audio(true);
+            yt_client.extra_arg("--audio-format").extra_arg("mp3");
             yt_client.download_to_async(video_download_dir.clone()).await.map_err(|e| RequestError::Internal(format!("ytdlp failed {e:?}").into()))?;
             trc::info!("VIDEO-DOWNLOAD-END");
         } else {
