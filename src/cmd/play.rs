@@ -178,7 +178,7 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
         PathBuf::from("downloads").join(path).join("data.mp3")
     };
 
-    trc::info!("PLAY-FILE-LOAD {:?}", load_path.canonicalize());
+    trc::info!("PLAY-FILE-LOAD {:?} {:?}", load_path.canonicalize(), load_path);
     let audio_file = std::fs::read(load_path).expect("file readable");
 
     Ok(audio_file)
