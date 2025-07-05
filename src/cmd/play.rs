@@ -137,7 +137,7 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
             .ok_or_else(|| RequestError::User("bad input -- could not find video".into()))?;
         trc::info!("METADATA-LOAD-END");
         // TODO Set dl size limits
-        let video_download_dir = Path::new("downloads").join(output.id);
+        let video_download_dir = Path::new("downloads/yt").join(output.id);
 
         // Best audio format, only
         if !std::fs::exists(video_download_dir.as_path()).map_err(|_e| RequestError::Internal("vid dl check failure".into()))? {
@@ -175,9 +175,18 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
         let path = &Path::new(path.as_ref());
 
         // Cobbled together to hopefully make it work.
-        PathBuf::from("downloads").join(path).join("data.mp3")
+        PathBuf::from("uploads").join(path).join("data.mp3")
     };
 
+    match load_path.canonicalize() {
+        Ok(p) => {
+            trc::info!("PLAY-FILE-LOAD {:?}", p);
+        },
+        Err(e) => {
+            trc::error!("PLAY-FILE-LOAD {:?} {:?}", load_path.canonicalize(), load_path);
+            return Err(RequestError::User("You haven't uploaded this song or audio file yet! Please enter a youtube URL or upload a file.".into()));
+        },
+    }
     trc::info!("PLAY-FILE-LOAD {:?} {:?}", load_path.canonicalize(), load_path);
     let audio_file = std::fs::read(load_path).expect("file readable");
 
