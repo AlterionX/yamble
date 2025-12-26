@@ -82,7 +82,7 @@ impl <'a> Request<'a> {
             Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
             Err(live_play) => songbird::input::Input::from(live_play),
         };
-        handler_lock.play_input(audio);
+        handler_lock.play_only_input(audio);
 
         if let Some(ch) = channel_changed_from {
             ctx.reply(format!("Switched to {} from {}!\nPlaying {}", Mention::Channel(target.id), Mention::Channel(ch.0.into()), self.music)).await?;
@@ -102,9 +102,6 @@ const YTDLP_DOWNLOAD_PATH: &str = "resources/bin/ytdlp";
 
 // TODO impl streaming properly instead of fully downloading first. Just don't play anything big
 async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Result<Vec<u8>, songbird::input::YoutubeDl<'static>>, RequestError> {
-    if music.starts_with("https://www.youtube.com/watch") {
-    }
-
     let load_path = if music.starts_with("https://www.youtube.com/watch") {
         // We expect this will take a while
         // TODO make this run out of band
