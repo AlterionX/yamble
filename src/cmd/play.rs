@@ -127,6 +127,7 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
         yt_client.youtube_dl_path(ytdlp_path.as_path());
         yt_client.socket_timeout("15");
         yt_client.output_directory("downloads");
+        yt_client.extra_arg("--no-playlist");
 
         trc::info!("METADATA-LOAD-START");
         let output = yt_client.clone()
