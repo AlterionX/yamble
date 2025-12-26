@@ -82,7 +82,8 @@ impl <'a> Request<'a> {
             Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
             Err(live_play) => songbird::input::Input::from(live_play),
         };
-        handler_lock.play_only_input(audio);
+        let _track_handle = handler_lock.play_only_input(audio);
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
         if let Some(ch) = channel_changed_from {
             ctx.reply(format!("Switched to {} from {}!\nPlaying {}", Mention::Channel(target.id), Mention::Channel(ch.0.into()), self.music)).await?;
