@@ -78,10 +78,11 @@ impl <'a> Request<'a> {
             }
         }
 
-        let audio = load_else_download(ctx, self.music).await?;
-
-        let mem = Memory::new(audio.into()).await.unwrap();
-        handler_lock.play_input(mem.into());
+        let audio = match load_else_download(ctx, self.music).await? {
+            Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
+            Err(live_play) => songbird::input::Input::from(live_play),
+        };
+        handler_lock.play_input(audio);
 
         if let Some(ch) = channel_changed_from {
             ctx.reply(format!("Switched to {} from {}!\nPlaying {}", Mention::Channel(target.id), Mention::Channel(ch.0.into()), self.music)).await?;
@@ -100,7 +101,10 @@ impl <'a> Request<'a> {
 const YTDLP_DOWNLOAD_PATH: &str = "resources/bin/ytdlp";
 
 // TODO impl streaming properly instead of fully downloading first. Just don't play anything big
-async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Vec<u8>, RequestError> {
+async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Result<Vec<u8>, songbird::input::YoutubeDl<'static>>, RequestError> {
+    if music.starts_with("https://www.youtube.com/watch") {
+    }
+
     let load_path = if music.starts_with("https://www.youtube.com/watch") {
         // We expect this will take a while
         // TODO make this run out of band
@@ -123,7 +127,7 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
             },
         };
 
-        let mut yt_client = YoutubeDl::new(music);
+        let mut yt_client = YoutubeDl::new(music.to_owned());
         yt_client.youtube_dl_path(ytdlp_path.as_path());
         yt_client.socket_timeout("15");
         yt_client.output_directory("downloads");
@@ -142,13 +146,28 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
 
         // Best audio format, only
         if !std::fs::exists(video_download_dir.as_path()).map_err(|_e| RequestError::Internal("vid dl check failure".into()))? {
-            trc::info!("VIDEO-DOWNLOAD-START");
-            // yt_client.format("a[acodec^=mp3]/ba/b");
-            // yt_client.extract_audio(true);
-            // yt_client.extra_arg("--audio-format").extra_arg("mp3");
-            yt_client.format("ba");
-            yt_client.download_to_async(video_download_dir.clone()).await.map_err(|e| RequestError::Internal(format!("ytdlp failed {e:?}").into()))?;
-            trc::info!("VIDEO-DOWNLOAD-END");
+            trc::info!("LIVE-PLAY-REQUIRED");
+            // Download async in case we need to play this again later.
+            // It'd be nice if we could fork the inpu instead.... but
+            // that needs digging into how to do it which I don't have
+            // time for rght now.
+            tokio::spawn(async move {
+                trc::info!("VIDEO-DOWNLOAD-START");
+                // yt_client.format("a[acodec^=mp3]/ba/b");
+                // yt_client.extract_audio(true);
+                // yt_client.extra_arg("--audio-format").extra_arg("mp3");
+                yt_client.format("ba");
+
+                match yt_client.download_to_async(video_download_dir.clone()).await {
+                    Ok(_) => {},
+                    Err(e) => {
+                        trc::error!("ytdlp failed {e:?}");
+                        return;
+                    },
+                }
+                trc::info!("VIDEO-DOWNLOAD-END");
+            });
+            return Ok(Err(songbird::input::YoutubeDl::new(reqwest::Client::new(), music.to_owned())));
         } else {
             trc::info!("VIDEO-DOWNLOAD-SKIP");
         }
@@ -184,12 +203,12 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<V
             trc::info!("PLAY-FILE-LOAD {:?}", p);
         },
         Err(e) => {
-            trc::error!("PLAY-FILE-LOAD {:?} {:?}", load_path.canonicalize(), load_path);
+            trc::error!("PLAY-FILE-LOAD {:?} {:?} {e:?}", load_path.canonicalize(), load_path);
             return Err(RequestError::User("You haven't uploaded this song or audio file yet! Please enter a youtube URL or upload a file.".into()));
         },
     }
     trc::info!("PLAY-FILE-LOAD {:?} {:?}", load_path.canonicalize(), load_path);
     let audio_file = std::fs::read(load_path).expect("file readable");
 
-    Ok(audio_file)
+    Ok(Ok(audio_file))
 }
