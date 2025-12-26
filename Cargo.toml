@@ -71,7 +71,7 @@ features = ["macros", "rt-multi-thread"]
 version = "2"
 features = ["postgres", "numeric", "chrono"]
 [dependencies.diesel-async]
-version = "0.3"
+version = "0.7"
 features = ["postgres"]
 
 [dependencies.azel]
