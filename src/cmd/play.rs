@@ -12,8 +12,9 @@ use super::RequestError;
 
 #[derive(Debug)]
 pub struct Request<'a> {
-    music: &'a str,
+    music: Option<&'a str>,
     target: Option<ChannelId>,
+    clear_playlist: bool,
     _phantom: &'a PhantomData<()>,
 }
 
@@ -21,6 +22,7 @@ impl <'a> Request<'a> {
     pub fn parse(cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
         let mut explicit_channel = None;
         let mut music = None;
+        let mut clear_playlist = false;
 
         for option in cmd.data.options().iter() {
             if option.name == "target" {
@@ -33,11 +35,17 @@ impl <'a> Request<'a> {
                     music = Some(provided_music);
                 }
             }
+            if option.name == "clear_playlist" {
+                if let ResolvedValue::Boolean(provided_clear_playlist) = option.value {
+                    clear_playlist = provided_clear_playlist;
+                }
+            }
         }
 
         Ok(Self {
-            music: music.ok_or_else(|| RequestError::User("missing `music` required parameter".into()))?,
+            music,
             target: explicit_channel,
+            clear_playlist,
             _phantom: &PhantomData,
         })
     }
@@ -68,6 +76,10 @@ impl <'a> Request<'a> {
 
         let mut handler_lock = handler.lock().await;
 
+        if self.clear_playlist {
+            handler_lock.stop();
+        }
+
         let current_joined_channel = handler_lock.current_channel();
         let mut channel_changed_from = None;
         if current_joined_channel != Some(target.id.into()) {
@@ -95,7 +107,6 @@ impl <'a> Request<'a> {
         } else {
             ctx.reply(format!("Playing {} in {}!", self.music, Mention::Channel(target.id))).await?;
         }
-
 
         Ok(())
     }
