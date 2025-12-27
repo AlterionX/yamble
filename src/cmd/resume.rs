@@ -11,7 +11,7 @@ pub struct Request<'a> {
 }
 
 impl <'a> Request<'a> {
-    pub fn parse(cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
+    pub fn parse(_cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
         Ok(Self {
             _phantom: &PhantomData,
         })
@@ -22,24 +22,21 @@ impl <'a> Request<'a> {
 
         let manager = songbird::get(ctx.ctx).await.expect("songbird initialized").clone();
         let Some(handler) = manager.get(guild_id) else {
-            ctx.reply_restricted("Not currently playing, nothing to adjust.".to_owned()).await?;
+            ctx.reply_restricted("Not currently playing, nothing to stop.".to_owned()).await?;
             return Ok(());
         };
 
         let handler_lock = handler.lock().await;
-        match handler_lock.queue().skip() {
+        match handler_lock.queue().resume() {
             Ok(_) => {
-                ctx.reply_restricted("Skipped to next track.".to_owned()).await?;
+                ctx.reply_restricted("Stopped playback.".to_owned()).await?;
             },
             Err(_) => {
-                // silently ignore if no next track
-                handler_lock.queue().stop();
-                ctx.reply_restricted("No next track. Playback stopped.".to_owned()).await?;
+                ctx.reply_restricted("Nothing to pause.".to_owned()).await?;
             },
         }
 
         Ok(())
     }
 }
-
 

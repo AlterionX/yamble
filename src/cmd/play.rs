@@ -12,7 +12,7 @@ use super::RequestError;
 
 #[derive(Debug)]
 pub struct Request<'a> {
-    music: Option<&'a str>,
+    music: &'a str,
     target: Option<ChannelId>,
     clear_playlist: bool,
     _phantom: &'a PhantomData<()>,
@@ -20,14 +20,14 @@ pub struct Request<'a> {
 
 impl <'a> Request<'a> {
     pub fn parse(cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
-        let mut explicit_channel = None;
+        let mut target = None;
         let mut music = None;
         let mut clear_playlist = false;
 
         for option in cmd.data.options().iter() {
             if option.name == "target" {
                 if let ResolvedValue::Channel(target_channel) = option.value {
-                    explicit_channel = Some(target_channel.id);
+                    target = Some(target_channel.id);
                 }
             }
             if option.name == "music" {
@@ -42,9 +42,11 @@ impl <'a> Request<'a> {
             }
         }
 
+        let music = music.ok_or_else(|| RequestError::User("missing `music` required parameter".into()))?;
+
         Ok(Self {
             music,
-            target: explicit_channel,
+            target,
             clear_playlist,
             _phantom: &PhantomData,
         })
@@ -76,10 +78,6 @@ impl <'a> Request<'a> {
 
         let mut handler_lock = handler.lock().await;
 
-        if self.clear_playlist {
-            handler_lock.stop();
-        }
-
         let current_joined_channel = handler_lock.current_channel();
         let mut channel_changed_from = None;
         if current_joined_channel != Some(target.id.into()) {
@@ -92,11 +90,15 @@ impl <'a> Request<'a> {
             }
         }
 
+        if self.clear_playlist {
+            handler_lock.stop();
+        }
+
         let audio = match load_else_download(ctx, self.music).await? {
             Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
             Err(live_play) => songbird::input::Input::from(live_play),
         };
-        let track_handle = handler_lock.play_only_input(audio);
+        let track_handle = handler_lock.enqueue_input(audio).await;
         track_handle.add_event(songbird::events::Event::Track(songbird::TrackEvent::Error), TrackErrorNotifier)
             .map_err(|e| RequestError::Internal(format!("failure to set error handler {e:?}").into()))?;
 

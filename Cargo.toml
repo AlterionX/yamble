@@ -41,7 +41,7 @@ features = ["v4"]
 [dependencies.songbird]
 version = "0.5"
 default-features = true
-features = ["receive"]
+features = ["receive", "builtin-queue"]
 [dependencies.symphonia]
 version = "0.5"
 features = ["all"]
