@@ -11,6 +11,8 @@ chrono-tz = "0.6"
 [dependencies.bigdecimal]
 version = "0.4.8"
 features = ["serde"]
+[dependencies.constcat]
+version = "0.6"
 
 [dependencies.strum]
 version = "0.26"

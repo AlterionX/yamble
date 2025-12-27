@@ -103,7 +103,7 @@ impl <'a> Request<'a> {
 
 // TODO lift ytdlp download to top later
 const YTDLP_DOWNLOAD_PATH: &str = "resources/bin/ytdlp";
-const YTDLP_EXEC_PATH: &str = "resources/bin/ytdlp/yt-dlp";
+const YTDLP_EXEC_PATH: &str = constcat::concat!(YTDLP_DOWNLOAD_PATH, "yt-dlp");
 
 // TODO impl streaming properly instead of fully downloading first. Just don't play anything big
 async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Result<Vec<u8>, songbird::input::YoutubeDl<'static>>, RequestError> {
