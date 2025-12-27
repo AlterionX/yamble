@@ -6,6 +6,8 @@ use tracing as trc;
 use serenity::all::{ChannelId, CommandInteraction, Mention, ResolvedValue};
 use youtube_dl::YoutubeDl;
 
+use crate::audio::TrackErrorNotifier;
+
 use super::RequestError;
 
 #[derive(Debug)]
@@ -82,8 +84,9 @@ impl <'a> Request<'a> {
             Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
             Err(live_play) => songbird::input::Input::from(live_play),
         };
-        let _track_handle = handler_lock.play_only_input(audio);
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        let track_handle = handler_lock.play_only_input(audio);
+        track_handle.add_event(songbird::events::Event::Track(songbird::TrackEvent::Error), TrackErrorNotifier)
+            .map_err(|e| RequestError::Internal(format!("failure to set error handler {e:?}").into()))?;
 
         if let Some(ch) = channel_changed_from {
             ctx.reply(format!("Switched to {} from {}!\nPlaying {}", Mention::Channel(target.id), Mention::Channel(ch.0.into()), self.music)).await?;
@@ -100,6 +103,7 @@ impl <'a> Request<'a> {
 
 // TODO lift ytdlp download to top later
 const YTDLP_DOWNLOAD_PATH: &str = "resources/bin/ytdlp";
+const YTDLP_EXEC_PATH: &str = "resources/bin/ytdlp/yt-dlp";
 
 // TODO impl streaming properly instead of fully downloading first. Just don't play anything big
 async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Result<Vec<u8>, songbird::input::YoutubeDl<'static>>, RequestError> {
@@ -165,7 +169,7 @@ async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<R
                 }
                 trc::info!("VIDEO-DOWNLOAD-END");
             });
-            return Ok(Err(songbird::input::YoutubeDl::new(reqwest::Client::new(), music.to_owned())));
+            return Ok(Err(songbird::input::YoutubeDl::new_ytdl_like(YTDLP_EXEC_PATH, reqwest::Client::new(), music.to_owned())));
         } else {
             trc::info!("VIDEO-DOWNLOAD-SKIP");
         }

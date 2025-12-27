@@ -140,6 +140,8 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "azel"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e5471b204e21cbe1ae5802d2a3040adc0efa650842f0f87e608f811f115877e"
 dependencies = [
  "bigdecimal",
  "chrono",
