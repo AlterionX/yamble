@@ -90,14 +90,16 @@ impl <'a> Request<'a> {
             }
         }
 
-        if self.clear_playlist {
-            handler_lock.stop();
-        }
-
         let audio = match load_else_download(ctx, self.music).await? {
             Ok(bytes) => songbird::input::Input::from(Memory::new(bytes.into()).await.unwrap()),
             Err(live_play) => songbird::input::Input::from(live_play),
         };
+
+        if self.clear_playlist {
+            // Silently ignore if any errors.
+            handler_lock.queue().stop();
+        }
+
         let track_handle = handler_lock.enqueue_input(audio).await;
         track_handle.add_event(songbird::events::Event::Track(songbird::TrackEvent::Error), TrackErrorNotifier)
             .map_err(|e| RequestError::Internal(format!("failure to set error handler {e:?}").into()))?;
@@ -107,7 +109,7 @@ impl <'a> Request<'a> {
         } else if join_required {
             ctx.reply(format!("Joined channel {}!\nPlaying {}", Mention::Channel(target.id), self.music)).await?;
         } else {
-            ctx.reply(format!("Playing {} in {}!", self.music, Mention::Channel(target.id))).await?;
+            ctx.reply(format!("Queued {} for playback in {}!", self.music, Mention::Channel(target.id))).await?;
         }
 
         Ok(())
@@ -116,7 +118,7 @@ impl <'a> Request<'a> {
 
 // TODO lift ytdlp download to top later
 const YTDLP_DOWNLOAD_PATH: &str = "resources/bin/ytdlp";
-const YTDLP_EXEC_PATH: &str = constcat::concat!(YTDLP_DOWNLOAD_PATH, "yt-dlp");
+const YTDLP_EXEC_PATH: &str = constcat::concat!(YTDLP_DOWNLOAD_PATH, "/yt-dlp");
 
 // TODO impl streaming properly instead of fully downloading first. Just don't play anything big
 async fn load_else_download(ctx: &ExecutionContext<'_>, music: &str) -> Result<Result<Vec<u8>, songbird::input::YoutubeDl<'static>>, RequestError> {

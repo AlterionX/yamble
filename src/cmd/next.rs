@@ -11,7 +11,7 @@ pub struct Request<'a> {
 }
 
 impl <'a> Request<'a> {
-    pub fn parse(cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
+    pub fn parse(_cmd: &'a CommandInteraction) -> Result<Self, RequestError> {
         Ok(Self {
             _phantom: &PhantomData,
         })

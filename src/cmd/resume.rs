@@ -22,17 +22,17 @@ impl <'a> Request<'a> {
 
         let manager = songbird::get(ctx.ctx).await.expect("songbird initialized").clone();
         let Some(handler) = manager.get(guild_id) else {
-            ctx.reply_restricted("Not currently playing, nothing to stop.".to_owned()).await?;
+            ctx.reply_restricted("Not currently playing, nothing to resume.".to_owned()).await?;
             return Ok(());
         };
 
         let handler_lock = handler.lock().await;
         match handler_lock.queue().resume() {
             Ok(_) => {
-                ctx.reply_restricted("Stopped playback.".to_owned()).await?;
+                ctx.reply_restricted("Resumed playback.".to_owned()).await?;
             },
             Err(_) => {
-                ctx.reply_restricted("Nothing to pause.".to_owned()).await?;
+                ctx.reply_restricted("Nothing to resume.".to_owned()).await?;
             },
         }
 
