@@ -22,7 +22,7 @@ impl <'a> Request<'a> {
             return Ok(());
         }
 
-        manager.leave(guild_id).await.map_err(|_e| RequestError::Internal("Voice channel leave failed.".into()))?;
+        manager.remove(guild_id).await.map_err(|_e| RequestError::Internal("Voice channel leave failed.".into()))?;
 
         ctx.reply("Left channel -- we just don't know which one (yet).".to_owned()).await?;
 
